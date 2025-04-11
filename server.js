@@ -1,14 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const authRoutes = require('./routes/auth');
-const chatRoutes = require('./routes/chat');
-const reportRoutes = require('./routes/reports');
-const generateReport = require('./services/analyse');
-const reportAnalysis = require('./services/reportAnalyse');
-const alertRoutes = require('./routes/alert');
-const machineRoutes = require('./routes/machineRoutes');
-const dbConfig = require('./config/db');
+const authRoutes = require('./server/routes/auth');
+const chatRoutes = require('./server/routes/chat');
+const reportRoutes = require('./server/routes/reports');
+const generateReport = require('./server/services/analyse');
+const reportAnalysis = require('./server/services/reportAnalyse');
+const alertRoutes = require('./server/routes/alert');
+const machineRoutes = require('./server/routes/machineRoutes');
+const dbConfig = require('./server/config/db');
 require('dotenv').config();
 
 
