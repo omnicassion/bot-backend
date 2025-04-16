@@ -7,10 +7,14 @@ const model = require('../config/gemini');
 router.get('/generate/:userId', async (req, res) => {
   const { userId } = req.params;
 
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
   try {
     const userReport = await Report.findOne({ userId });
 
-    if (!userReport || !userReport.chatHistory.length) {
+    if (!userReport || !userReport.chatHistory || !userReport.chatHistory.length) {
       return res.status(404).json({ error: 'No chat history found' });
     }
 

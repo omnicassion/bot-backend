@@ -16,6 +16,9 @@ router.get('/analyze/:userId', async (req, res) => {
 
     // Get the latest report
     const latestReport = reports[reports.length - 1];
+    if (!latestReport) {
+      return res.status(404).json({ error: 'No report data found for this user.' });
+    }
 
     // Create prompt
     // Create prompt
