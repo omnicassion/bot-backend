@@ -9,6 +9,7 @@ const reportAnalysis = require('./server/services/reportAnalyse');
 const alertRoutes = require('./server/routes/alert');
 const machineRoutes = require('./server/routes/machineRoutes');
 const dbConfig = require('./server/config/db');
+const adminRouter = require('./server/routes/adminRoutes');
 require('dotenv').config();
 
 
@@ -33,6 +34,7 @@ app.use('/api', generateReport);
 app.use('/api', reportAnalysis);
 app.use('/api', alertRoutes);
 app.use('/api/machines', machineRoutes);
+app.use('/api/adminRoute', adminRouter);
 
 app.get('/', (req, res) => {
   res.send('Medical Chatbot Server is running');
