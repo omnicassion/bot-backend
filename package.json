@@ -4,22 +4,33 @@
   "description": "A medical chatbot that provides advice, records symptoms, generates reports, and alerts doctors based on severity of symptoms.",
   "main": "server/server.js",
   "scripts": {
-    "start": "nodemon server.js",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "dev:debug": "nodemon --inspect server.js",
+    "prod": "NODE_ENV=production node server.js",
     "client": "npm start --prefix client",
-    "dev": "concurrently \"npm run start\" \"npm run client\"",
-    "test": "echo \"No tests specified\" && exit 0"
+    "dev:full": "concurrently \"npm run dev\" \"npm run client\"",
+    "test": "echo \"No tests specified\" && exit 0",
+    "validate-contexts": "node server/scripts/contextManager.js validate",
+    "list-contexts": "node server/scripts/contextManager.js list",
+    "backup-contexts": "node server/scripts/contextManager.js backup"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "bcrypt": "^5.0.1",
+    "bcryptjs": "^3.0.2",
+    "compression": "^1.8.1",
     "concurrently": "^5.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.17.1",
-    "mongoose": "^5.10.9"
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "mongoose": "^5.10.9",
+    "morgan": "^1.10.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.4"
+    "nodemon": "^2.0.22"
   },
   "author": "Your Name",
   "license": "MIT"
