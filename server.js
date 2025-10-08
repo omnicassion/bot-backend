@@ -52,7 +52,7 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: "https://bot-frontend-sage.vercel.app/" || '*',
+  origin: "https://bot-frontend-sage.vercel.app",
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true
