@@ -10,7 +10,8 @@ const chatSchema = new mongoose.Schema({
 });
 
 const reportSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
+  userId: { type: String, required: true }, // Username for backward compatibility
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Reference to User model
   chatHistory: [chatSchema],
   symptoms: [{ type: String }], // Array of symptoms
   diagnosis: { type: String }, // Medical diagnosis
@@ -27,7 +28,13 @@ const reportSchema = new mongoose.Schema({
     default: 'medium' 
   },
   notes: { type: String }, // Additional notes from medical professional
-  analysisResults: { type: mongoose.Schema.Types.Mixed } // Results from AI analysis (can be object or string)
+  analysisResults: { type: mongoose.Schema.Types.Mixed }, // Results from AI analysis (can be object or string)
+  pendingFollowUp: { 
+    type: String, 
+    enum: ['ayushman_has_card', 'ayushman_amount_used', 'ayushman_coverage_amount', null],
+    default: null 
+  }, // Track which follow-up question is pending
+  followUpData: { type: mongoose.Schema.Types.Mixed, default: {} } // Temporary storage for follow-up responses
 });
 
 // Update the updatedAt field before saving

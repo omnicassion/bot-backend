@@ -52,7 +52,7 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: "https://bot-frontend-sage.vercel.app",
+  origin: ["https://bot-frontend-sage.vercel.app", "http://localhost:3000"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true
@@ -211,6 +211,14 @@ app.use('/api/adminRoute', adminRouter);
 // New admin management routes
 const userManagementRoutes = require('./server/routes/userManagement');
 app.use('/api/admin', userManagementRoutes);
+
+// Ayushman card routes
+const ayushmanRoutes = require('./server/routes/ayushman');
+app.use('/api/ayushman', ayushmanRoutes);
+
+// PIQ Form routes
+const piqFormRoutes = require('./server/routes/piqForm');
+app.use('/api/piq-forms', piqFormRoutes);
 
 // These routes should be mounted on specific paths instead of '/api'
 app.use('/api/analyse', generateReport);

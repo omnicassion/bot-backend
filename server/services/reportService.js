@@ -1,4 +1,5 @@
 const Report = require('../models/Report');
+const User = require('../models/User');
 
 // Function to create and store a medical report
 const createReport = async (reportData) => {
@@ -13,8 +14,19 @@ const createReport = async (reportData) => {
       reportParams = { userId, chatHistory, symptoms, diagnosis };
     }
 
+    // Try to find and link the user by username
+    if (reportParams.userId) {
+      const user = await User.findOne({ username: reportParams.userId });
+      if (user) {
+        reportParams.user = user._id;
+      }
+    }
+
     const report = new Report(reportParams);
     await report.save();
+    
+    // Populate user data before returning
+    await report.populate('user', 'username email role');
     return report;
   } catch (error) {
     throw new Error('Error creating report: ' + error.message);
@@ -24,7 +36,9 @@ const createReport = async (reportData) => {
 // Function to get all reports
 const getAllReports = async () => {
   try {
-    const reports = await Report.find().sort({ createdAt: -1 });
+    const reports = await Report.find()
+      .populate('user', 'username email role')
+      .sort({ createdAt: -1 });
     return reports;
   } catch (error) {
     throw new Error('Error fetching all reports: ' + error.message);
@@ -34,7 +48,9 @@ const getAllReports = async () => {
 // Function to get reports by user ID
 const getReportsByUserId = async (userId) => {
   try {
-    const reports = await Report.find({ userId }).sort({ createdAt: -1 });
+    const reports = await Report.find({ userId })
+      .populate('user', 'username email role')
+      .sort({ createdAt: -1 });
     return reports;
   } catch (error) {
     throw new Error('Error fetching reports by user ID: ' + error.message);
@@ -44,7 +60,8 @@ const getReportsByUserId = async (userId) => {
 // Function to get a report by ID
 const getReportById = async (reportId) => {
   try {
-    const report = await Report.findById(reportId);
+    const report = await Report.findById(reportId)
+      .populate('user', 'username email role');
     return report;
   } catch (error) {
     throw new Error('Error fetching report by ID: ' + error.message);
@@ -100,7 +117,9 @@ const addChatToReport = async (userId, chatEntry) => {
 // Function to get reports by status
 const getReportsByStatus = async (status) => {
   try {
-    const reports = await Report.find({ status }).sort({ createdAt: -1 });
+    const reports = await Report.find({ status })
+      .populate('user', 'username email role')
+      .sort({ createdAt: -1 });
     return reports;
   } catch (error) {
     throw new Error('Error fetching reports by status: ' + error.message);
@@ -110,7 +129,9 @@ const getReportsByStatus = async (status) => {
 // Function to get reports by priority
 const getReportsByPriority = async (priority) => {
   try {
-    const reports = await Report.find({ priority }).sort({ createdAt: -1 });
+    const reports = await Report.find({ priority })
+      .populate('user', 'username email role')
+      .sort({ createdAt: -1 });
     return reports;
   } catch (error) {
     throw new Error('Error fetching reports by priority: ' + error.message);
@@ -124,7 +145,7 @@ const updateReportAnalysis = async (reportId, analysisResults) => {
       reportId,
       { analysisResults, updatedAt: Date.now() },
       { new: true }
-    );
+    ).populate('user', 'username email role');
     return updatedReport;
   } catch (error) {
     throw new Error('Error updating report analysis: ' + error.message);

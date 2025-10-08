@@ -100,7 +100,8 @@ Respond with ONLY the context key (e.g., "radiotherapy_side_effects") that best 
       'treatment_information': ['treatment', 'procedure', 'session', 'radiation', 'what happens', 'expect', 'prepare'],
       'emotional_support': ['scared', 'afraid', 'anxious', 'worried', 'depressed', 'fear', 'stress', 'overwhelmed', 'sad'],
       'nutrition_lifestyle': ['eat', 'food', 'diet', 'nutrition', 'weight', 'appetite', 'exercise', 'lifestyle'],
-      'appointment_logistics': ['appointment', 'schedule', 'when', 'time', 'location', 'where', 'directions', 'cancel']
+      'appointment_logistics': ['appointment', 'schedule', 'when', 'time', 'location', 'where', 'directions', 'cancel'],
+      'ayushman_card_insurance': ['ayushman', 'insurance', 'card', 'coverage', 'money', 'cost', 'payment', 'financial', 'claim', 'benefit', 'scheme']
     };
 
     // Find best matching context based on keywords
@@ -119,6 +120,138 @@ Respond with ONLY the context key (e.g., "radiotherapy_side_effects") that best 
     return bestMatch;
   },
 
+  // Check if user query is about Ayushman card
+  isAyushmanQuery(message) {
+    const ayushmanKeywords = ['ayushman', 'pm-jay', 'pmjay', 'insurance', 'scheme', 'card', 'coverage', 'financial help'];
+    const messageLower = message.toLowerCase();
+    return ayushmanKeywords.some(keyword => messageLower.includes(keyword));
+  },
+
+  // Process follow-up questions for Ayushman card
+  async handleFollowUpQuestion(userId, message, report) {
+    const User = require('../models/User');
+    const messageLower = message.toLowerCase().trim();
+    
+    // Handle follow-up: Do you have Ayushman card?
+    if (report.pendingFollowUp === 'ayushman_has_card') {
+      const hasCard = messageLower.includes('yes') || messageLower.includes('have') || 
+                      messageLower.includes('got') || messageLower.includes('possess');
+      
+      // Update user's Ayushman card status
+      await User.findOneAndUpdate(
+        { username: userId },
+        { 
+          'ayushmanCard.hasCard': hasCard,
+          'ayushmanCard.lastUpdated': new Date()
+        },
+        { upsert: false }
+      );
+
+      if (hasCard) {
+        // Ask next question: How much have you used?
+        await Report.findOneAndUpdate(
+          { userId },
+          { 
+            pendingFollowUp: 'ayushman_amount_used',
+            $set: { 'followUpData.hasCard': true }
+          }
+        );
+
+        return {
+          response: "Great! That's helpful to know. 💳\n\nTo better assist you with your treatment planning, could you please tell me:\n\n**How much of your Ayushman card coverage have you used so far?**\n\nYou can provide:\n- The amount in rupees (e.g., ₹50,000 or 50000)\n- A percentage (e.g., 10% or 20%)\n- Or simply say 'none' if you haven't used it yet\n\nThis will help me understand what coverage you have available for your treatment.",
+          severity: 'low',
+          contextUsed: 'ayushman_card_insurance',
+          contextName: 'Ayushman Bharat Insurance Support',
+          isFollowUp: true
+        };
+      } else {
+        // User doesn't have card, provide information
+        await Report.findOneAndUpdate(
+          { userId },
+          { 
+            pendingFollowUp: null,
+            $set: { 'followUpData.hasCard': false }
+          }
+        );
+
+        return {
+          response: "I understand. Don't worry, there are still ways to get financial assistance for your treatment. 🏥\n\n**Here's how you can apply for an Ayushman Bharat card:**\n\n1. **Check Eligibility**: Visit the nearest Common Service Center (CSC) or Ayushman Mitra at PGIMER\n2. **Required Documents**: \n   - Aadhaar card\n   - Ration card\n   - Mobile number\n3. **Application Process**: It's free and takes only 10-15 minutes\n4. **Coverage**: You'll get ₹5 lakh per year for your family\n\n**At PGIMER Chandigarh**, you can:\n- Visit the Ayushman Bharat desk at the hospital\n- Contact: Ayushman Bharat helpline 14555\n- Check eligibility online: https://pmjay.gov.in\n\n**Other Financial Assistance Options:**\n- PGIMER's own patient welfare schemes\n- Chief Minister Relief Fund\n- NGO support programs\n\nWould you like more information about any of these options?\n\n*Note: Please consult with the hospital's financial counselor for personalized assistance.*",
+          severity: 'low',
+          contextUsed: 'ayushman_card_insurance',
+          contextName: 'Ayushman Bharat Insurance Support',
+          isFollowUp: false
+        };
+      }
+    }
+    
+    // Handle follow-up: How much amount used?
+    if (report.pendingFollowUp === 'ayushman_amount_used') {
+      let amountUsed = 0;
+      
+      // Parse the amount from user input
+      const numberMatch = message.match(/(\d+)/);
+      if (numberMatch) {
+        amountUsed = parseInt(numberMatch[1]);
+        
+        // If it's a percentage, calculate actual amount
+        if (message.includes('%')) {
+          amountUsed = (amountUsed / 100) * 500000;
+        }
+      } else if (messageLower.includes('none') || messageLower.includes('zero') || messageLower.includes('not used')) {
+        amountUsed = 0;
+      }
+
+      // Update user's Ayushman card usage
+      const amountRemaining = 500000 - amountUsed;
+      await User.findOneAndUpdate(
+        { username: userId },
+        { 
+          'ayushmanCard.amountUsed': amountUsed,
+          'ayushmanCard.amountRemaining': amountRemaining,
+          'ayushmanCard.lastUpdated': new Date()
+        }
+      );
+
+      // Clear follow-up state
+      await Report.findOneAndUpdate(
+        { userId },
+        { 
+          pendingFollowUp: null,
+          $set: { 
+            'followUpData.hasCard': true,
+            'followUpData.amountUsed': amountUsed
+          }
+        }
+      );
+
+      // Format amounts for display
+      const formatAmount = (amt) => {
+        return new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: 'INR',
+          maximumFractionDigits: 0
+        }).format(amt);
+      };
+
+      return {
+        response: `Thank you for sharing that information! 📊\n\n**Your Ayushman Card Coverage Summary:**\n\n💳 **Total Coverage**: ${formatAmount(500000)} per year\n✅ **Amount Used**: ${formatAmount(amountUsed)}\n💰 **Remaining Balance**: ${formatAmount(amountRemaining)}\n📈 **Usage**: ${((amountUsed/500000)*100).toFixed(1)}% of total coverage\n\n${amountRemaining > 0 ? 
+  `Great news! You still have **${formatAmount(amountRemaining)}** available for your treatment. This should cover:\n\n- Radiotherapy sessions\n- Hospitalization costs\n- Medicines and diagnostics\n- Pre and post-treatment care\n\n**Next Steps:**\n1. Bring your Ayushman card to your appointments\n2. Ensure cashless treatment is activated\n3. Keep your card handy for verification\n\nThe Ayushman desk at PGIMER will help coordinate your cashless treatment.` :
+  `I see you've used your full coverage for this year. Here are your options:\n\n1. **Next Year's Coverage**: Wait for the yearly reset\n2. **Additional Schemes**: Explore PGIMER welfare schemes\n3. **State Government Support**: Apply for CM Relief Fund\n4. **NGO Support**: Several NGOs support cancer patients\n\nI recommend speaking with the hospital's financial counselor for alternative support options.`}\n\nIs there anything specific about your treatment costs or coverage you'd like to know?\n\n*Note: Please verify your current coverage balance with the Ayushman desk for the most accurate information.*`,
+        severity: 'low',
+        contextUsed: 'ayushman_card_insurance',
+        contextName: 'Ayushman Bharat Insurance Support',
+        isFollowUp: false,
+        ayushmanData: {
+          totalCoverage: 500000,
+          amountUsed: amountUsed,
+          amountRemaining: amountRemaining
+        }
+      };
+    }
+
+    return null; // No follow-up to handle
+  },
+
   async handleUserMessage(userId, message) {
     const startTime = Date.now();
     
@@ -127,6 +260,37 @@ Respond with ONLY the context key (e.g., "radiotherapy_side_effects") that best 
       
       // Get previous chat history
       const previousReport = await Report.findOne({ userId });
+
+      // Check if there's a pending follow-up question
+      if (previousReport && previousReport.pendingFollowUp) {
+        console.log(`Processing follow-up: ${previousReport.pendingFollowUp}`);
+        const followUpResponse = await this.handleFollowUpQuestion(userId, message, previousReport);
+        
+        if (followUpResponse) {
+          // Save the conversation to database
+          await Report.findOneAndUpdate(
+            { userId },
+            {
+              $push: {
+                chatHistory: {
+                  user: message,
+                  bot: followUpResponse.response,
+                  timestamp: new Date(),
+                  severity: followUpResponse.severity,
+                  contextUsed: followUpResponse.contextUsed,
+                  contextName: followUpResponse.contextName,
+                  processingTime: Date.now() - startTime
+                }
+              }
+            }
+          );
+          
+          return {
+            ...followUpResponse,
+            processingTime: Date.now() - startTime
+          };
+        }
+      }
 
       let previousChats = '';
       if (previousReport && previousReport.chatHistory) {
@@ -214,12 +378,35 @@ Please provide a helpful, compassionate response based on your specialized exper
       const totalTime = Date.now() - startTime;
       console.log(`Chat processing completed in ${totalTime}ms`);
 
+      // Check if this is an Ayushman query and user hasn't been asked about card yet
+      const User = require('../models/User');
+      const user = await User.findOne({ username: userId });
+      
+      let shouldAskAyushman = false;
+      let ayushmanFollowUpMessage = '';
+      
+      if (this.isAyushmanQuery(message) && user) {
+        // Check if we haven't asked about Ayushman card yet
+        if (!user.ayushmanCard || user.ayushmanCard.hasCard === undefined || user.ayushmanCard.hasCard === null) {
+          shouldAskAyushman = true;
+          
+          // Set follow-up state
+          await Report.findOneAndUpdate(
+            { userId },
+            { pendingFollowUp: 'ayushman_has_card' }
+          );
+          
+          ayushmanFollowUpMessage = `\n\n---\n\n📋 **Quick Question to Help You Better:**\n\nDo you have an Ayushman Bharat card (PM-JAY)? \n\nPlease reply with:\n- "Yes" if you have the card\n- "No" if you don't have it yet\n\nThis will help me provide you with specific guidance about your treatment coverage.`;
+        }
+      }
+
       return {
-        response,
+        response: response + ayushmanFollowUpMessage,
         severity: severityLevel,
         contextUsed: selectedContextKey,
         contextName: selectedContext.name,
-        processingTime: totalTime
+        processingTime: totalTime,
+        hasFollowUp: shouldAskAyushman
       };
     } catch (error) {
       const totalTime = Date.now() - startTime;
